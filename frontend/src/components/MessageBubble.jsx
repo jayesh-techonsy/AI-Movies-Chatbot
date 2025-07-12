@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // // import React from "react";
 
 // // const formatBotResponse = (text) => {
@@ -110,15 +111,61 @@
 
 // export default MessageBubble;
 
+// import React, { useState, useEffect } from "react";
+
+// const MessageBubble = ({ sender, text }) => {
+//   const isUser = sender === "user";
+//   const [displayedText, setDisplayedText] = useState(isUser ? text : "");
+
+//   useEffect(() => {
+//     if (isUser) return;
+    
+//     let i = 0;
+//     const typingEffect = setInterval(() => {
+//       if (i < text.length) {
+//         setDisplayedText(text.substring(0, i + 1));
+//         i++;
+//       } else {
+//         clearInterval(typingEffect);
+//       }
+//     }, 20);
+
+//     return () => clearInterval(typingEffect);
+//   }, [text, isUser]);
+
+//   return (
+//     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+//       <div
+//         className={`max-w-[85%] px-4 py-3 rounded-lg text-sm ${
+//           isUser
+//             ? "bg-gray-800 text-white rounded-br-none"
+//             : "bg-gray-100 text-gray-800 rounded-bl-none"
+//         }`}
+//       >
+//         {displayedText}
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default MessageBubble;
+
+
 import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { FaFilm, FaStar } from "react-icons/fa";
 
 const MessageBubble = ({ sender, text }) => {
   const isUser = sender === "user";
   const [displayedText, setDisplayedText] = useState(isUser ? text : "");
+  const [showIcon, setShowIcon] = useState(false);
 
   useEffect(() => {
-    if (isUser) return;
-    
+    if (isUser) {
+      setDisplayedText(text);
+      return;
+    }
+
     let i = 0;
     const typingEffect = setInterval(() => {
       if (i < text.length) {
@@ -126,24 +173,82 @@ const MessageBubble = ({ sender, text }) => {
         i++;
       } else {
         clearInterval(typingEffect);
+        setShowIcon(true);
       }
     }, 20);
 
-    return () => clearInterval(typingEffect);
+    return () => {
+      clearInterval(typingEffect);
+      setShowIcon(false);
+    };
   }, [text, isUser]);
 
+  const formatBotResponse = (text) => {
+    const lines = text.split("\n").filter(Boolean);
+
+    return (
+      <div className="space-y-2">
+        {lines.map((line, idx) => {
+          if (line.startsWith("🎬")) {
+            return (
+              <div key={idx} className="font-semibold text-indigo-600 flex items-center">
+                <FaFilm className="mr-2" />
+                {line}
+              </div>
+            );
+          }
+
+          if (line.startsWith("•") || /^\d+\./.test(line.trim())) {
+            return (
+              <div key={idx} className="flex items-start">
+                <FaStar className="text-yellow-400 text-xs mt-1 mr-2 flex-shrink-0" />
+                <span className="text-gray-700">{line.replace(/^•\s*|\d+\.\s*/, '')}</span>
+              </div>
+            );
+          }
+
+          return (
+            <div key={idx} className="text-gray-700">
+              {line}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      className={`flex ${isUser ? "justify-end" : "justify-start"} px-4 py-1`}
+    >
       <div
-        className={`max-w-[85%] px-4 py-3 rounded-lg text-sm ${
+        className={`max-w-[85%] px-4 py-3 rounded-xl text-sm relative ${
           isUser
-            ? "bg-gray-800 text-white rounded-br-none"
+            ? "bg-indigo-500 text-white rounded-br-none"
             : "bg-gray-100 text-gray-800 rounded-bl-none"
         }`}
       >
-        {displayedText}
+        {isUser ? (
+          displayedText
+        ) : (
+          <>
+            {formatBotResponse(displayedText)}
+            {showIcon && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="absolute -left-2 -bottom-2 bg-white p-1 rounded-full shadow-sm"
+              >
+                <FaFilm className="text-indigo-500 text-xs" />
+              </motion.div>
+            )}
+          </>
+        )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 

@@ -1,35 +1,40 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState } from "react";
+import ChatWindow from "./components/ChatWindow";
+import MessageInput from "./components/MessageInput";
+import { sendMessageToBot } from "./services/api";
 
-function App() {
-  const [count, setCount] = useState(0)
+const App = () => {
+  const [chat, setChat] = useState([]);
+
+  const handleSend = async (message) => {
+    const userMessage = { sender: "user", text: message };
+    setChat((prev) => [...prev, userMessage]);
+
+    try {
+      const res = await sendMessageToBot(message);
+      const botMessage = { sender: "bot", text: res.answer };
+      setChat((prev) => [...prev, botMessage]);
+    } catch {
+      setChat((prev) => [
+        ...prev,
+        { sender: "bot", text: "⚠️ Error: could not get response" },
+      ]);
+    }
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center p-4">
+      <div className="w-full max-w-2xl h-[80vh] flex flex-col bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
+        <header className="bg-indigo-600 text-white text-lg font-semibold px-6 py-4">
+          🎬 AI Movie Chatbot
+        </header>
 
-export default App
+        <ChatWindow chat={chat} />
+
+        <MessageInput onSend={handleSend} />
+      </div>
+    </div>
+  );
+};
+
+export default App;

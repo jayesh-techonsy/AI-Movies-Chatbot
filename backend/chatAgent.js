@@ -480,32 +480,203 @@
 // }
 
 
+// import { config } from 'dotenv';
+// import { OpenAIEmbeddings } from '@langchain/openai';
+// import { Pinecone } from '@pinecone-database/pinecone';
+// import { PineconeStore } from '@langchain/pinecone'; 
+// import OpenAI from 'openai';
+
+// config();
+
+// // 🔑 OpenAI
+// const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// // 📦 Pinecone
+// const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
+// const pineconeIndex = await pinecone.index(process.env.PINECONE_INDEX);
+
+// // 🔗 Langchain vector store
+// const embeddings = new OpenAIEmbeddings({
+//   openAIApiKey: process.env.OPENAI_API_KEY,
+// });
+
+// const vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
+//   pineconeIndex,
+//   namespace: '__default__',
+// });
+
+// // ✅ Classify if the message is a movie query
+// async function isMovieQuery(input) {
+//   const response = await openai.chat.completions.create({
+//     model: "gpt-3.5-turbo",
+//     temperature: 0,
+//     messages: [
+//       {
+//         role: "system",
+//         content: `
+// You're an assistant that classifies user input.
+
+// If the input is a movie-related query (e.g. about genres, titles, years, ratings, recommendations), respond with "true".
+
+// If the input is a casual greeting, small talk, or unrelated to movies, respond with "false".
+
+// Respond with only "true" or "false".`,
+//       },
+//       { role: "user", content: input },
+//     ],
+//   });
+
+//   return response.choices[0].message.content.trim() === "true";
+// }
+
+// // 🧠 Extract query + filters
+// async function extractQueryAndFilters(userInput) {
+//   const systemPrompt = `You're an assistant that extracts movie search filters and the query from user messages.
+
+// Respond ONLY in this JSON format:
+// {
+//   "query": "<semantic meaning>",
+//   "filters": {
+//     "genre": "<optional genre>",
+//     "year": <optional year>,
+//     "rating": <optional rating>
+//   }
+// }
+
+// Leave out any filter that is not present.`;
+
+//   const response = await openai.chat.completions.create({
+//     model: 'gpt-3.5-turbo',
+//     temperature: 0.2,
+//     messages: [
+//       { role: 'system', content: systemPrompt },
+//       { role: 'user', content: userInput },
+//     ],
+//   });
+
+//   const raw = response.choices[0].message.content;
+
+//   try {
+//     const parsed = JSON.parse(raw);
+//     return {
+//       query: parsed.query || userInput,
+//       filters: parsed.filters || {},
+//     };
+//   } catch (e) {
+//     console.warn('⚠️ Failed to parse filters from AI. Using fallback.');
+//     return { query: userInput, filters: {} };
+//   }
+// }
+
+// // 🤖 Main chat handler
+// export async function chatHandler(userInput) {
+//   const isQuery = await isMovieQuery(userInput);
+
+//   if (!isQuery) {
+//     return "👋 Hi there! How can I help you with movies today?";
+//   }
+
+//   const { query, filters } = await extractQueryAndFilters(userInput);
+//   console.log('🔍 Searching for:', query);
+//   console.log('🎯 Using filters:', filters);
+
+//   try {
+//     // Step 1: Semantic search
+//     const results = await vectorStore.similaritySearch(query, 25);
+
+//     if (!results.length) return '❌ No matching movies found.';
+
+//     // Step 2: Normalize results
+//     let filtered = results.map((r) => ({
+//       title: r.metadata.title,
+//       description: r.metadata.description || '',
+//       year: r.metadata.year,
+//       rating: r.metadata.rating,
+//       genre: r.metadata.genre || '',
+//     }));
+
+//     // Step 3: Apply filters
+//     if (filters.genre) {
+//       filtered = filtered.filter((m) =>
+//         m.genre?.toLowerCase().includes(filters.genre.toLowerCase())
+//       );
+//     }
+//     if (filters.year) {
+//       filtered = filtered.filter((m) =>
+//         m.year && Number(m.year) === Number(filters.year)
+//       );
+//     }
+//     if (filters.rating) {
+//       filtered = filtered.filter((m) =>
+//         m.rating && Number(m.rating) >= Number(filters.rating)
+//       );
+//     }
+
+//     const finalMovies = filtered.length ? filtered : results.map((r) => ({
+//       title: r.metadata.title,
+//       description: r.metadata.description || '',
+//       year: r.metadata.year,
+//       rating: r.metadata.rating,
+//       genre: r.metadata.genre || '',
+//     }));
+
+//     // Step 4: GPT formats the final answer
+//     const filterPrompt = `
+// You are a helpful movie assistant. From the movie list below, return the best 3–5 matches for the user query.
+
+// User request: "${userInput}"
+
+// Movies:
+// ${JSON.stringify(finalMovies.slice(0, 15), null, 2)}
+
+// Instructions:
+// - List 3–5 relevant movies with title, year, and rating.
+// - Add a dynamic intro based on genre/year if possible.
+// - Keep each description short (1–2 lines max).
+// - End with: "Let me know if you'd like more info about any of them."
+// `.trim();
+
+//     const aiResponse = await openai.chat.completions.create({
+//       model: 'gpt-4',
+//       temperature: 0.3,
+//       messages: [{ role: 'user', content: filterPrompt }],
+//     });
+
+//     return aiResponse.choices[0].message.content;
+//   } catch (err) {
+//     console.error('❌ Error during movie filtering:', err.message);
+//     return `❌ Error processing request: ${err.message}`;
+//   }
+// }
+
+
 import { config } from 'dotenv';
+import OpenAI from 'openai';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { PineconeStore } from '@langchain/community/vectorstores/pinecone';
-import OpenAI from 'openai';
 
 config();
 
-// 🔑 OpenAI
+// OpenAI setup
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// 📦 Pinecone
+// Pinecone setup
 const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
-const pineconeIndex = await pinecone.index(process.env.PINECONE_INDEX);
+const pineconeIndex = pinecone.Index(process.env.PINECONE_INDEX);
 
-// 🔗 Langchain vector store
+// Embeddings
 const embeddings = new OpenAIEmbeddings({
   openAIApiKey: process.env.OPENAI_API_KEY,
 });
 
+// Vector store
 const vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
   pineconeIndex,
   namespace: '__default__',
 });
 
-// ✅ Classify if the message is a movie query
+// Determine if user input is a movie query
 async function isMovieQuery(input) {
   const response = await openai.chat.completions.create({
     model: "gpt-3.5-turbo",
@@ -513,8 +684,7 @@ async function isMovieQuery(input) {
     messages: [
       {
         role: "system",
-        content: `
-You're an assistant that classifies user input.
+        content: `You're an assistant that classifies user input.
 
 If the input is a movie-related query (e.g. about genres, titles, years, ratings, recommendations), respond with "true".
 
@@ -529,7 +699,7 @@ Respond with only "true" or "false".`,
   return response.choices[0].message.content.trim() === "true";
 }
 
-// 🧠 Extract query + filters
+// Extract filters
 async function extractQueryAndFilters(userInput) {
   const systemPrompt = `You're an assistant that extracts movie search filters and the query from user messages.
 
@@ -568,7 +738,7 @@ Leave out any filter that is not present.`;
   }
 }
 
-// 🤖 Main chat handler
+// Main chat handler
 export async function chatHandler(userInput) {
   const isQuery = await isMovieQuery(userInput);
 
@@ -581,12 +751,10 @@ export async function chatHandler(userInput) {
   console.log('🎯 Using filters:', filters);
 
   try {
-    // Step 1: Semantic search
     const results = await vectorStore.similaritySearch(query, 25);
 
     if (!results.length) return '❌ No matching movies found.';
 
-    // Step 2: Normalize results
     let filtered = results.map((r) => ({
       title: r.metadata.title,
       description: r.metadata.description || '',
@@ -595,7 +763,6 @@ export async function chatHandler(userInput) {
       genre: r.metadata.genre || '',
     }));
 
-    // Step 3: Apply filters
     if (filters.genre) {
       filtered = filtered.filter((m) =>
         m.genre?.toLowerCase().includes(filters.genre.toLowerCase())
@@ -620,7 +787,6 @@ export async function chatHandler(userInput) {
       genre: r.metadata.genre || '',
     }));
 
-    // Step 4: GPT formats the final answer
     const filterPrompt = `
 You are a helpful movie assistant. From the movie list below, return the best 3–5 matches for the user query.
 

@@ -1,5 +1,7 @@
 // backend/utils/embedding.js
-const axios = require('axios');
+// const axios = require('axios');
+import dotenv from 'dotenv'
+import('dotenv').config();
 
 const getEmbedding = async (text) => {
   const res = await axios.post(
